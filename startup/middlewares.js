@@ -27,7 +27,7 @@ module.exports = function(app) {
 
     // for enabling cors requests from clients for a specific set of origins
     app.use(cors({
-        origin: [process.env.FRONTEND_BASE_URL],
+        origin: process.env.CORS_ORIGIN.split(','),
         optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
     }));
 

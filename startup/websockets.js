@@ -2,7 +2,7 @@ module.exports = function (server) {
     const io = require("socket.io")(server, {
         pingTimeout: 60000,
         cors: {
-            origin: process.env.FRONTEND_BASE_URL
+            origin: process.env.CORS_ORIGIN.split(',')
         },
     });
 
