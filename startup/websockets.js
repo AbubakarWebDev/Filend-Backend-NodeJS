@@ -84,8 +84,9 @@ module.exports = function (server) {
         });
     });
 
-    
+
     const users = {};
+    let initiator = null;
     const socketToRoom = {};
 
     webRTCNamespace.on('connection', (socket) => {
