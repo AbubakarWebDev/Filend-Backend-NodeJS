@@ -202,6 +202,7 @@ class AuthController {
     if (!user)
       throw new AppError("The User with this email is not registered!", 400);
 
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     const secret = user._id + process.env.JWT_SECRET_KEY;
     const token = jwt.sign({ email: user.email }, secret, { expiresIn: "15m" });
     const resetLink = `${process.env.FRONTEND_BASE_URL}/reset-password/${user._id}/${token}`;
