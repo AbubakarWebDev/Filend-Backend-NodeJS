@@ -1,5 +1,6 @@
 const express = require('express');
 const debug = require('debug')('app:debug');
+const SocketServer = require("./startup/websockets");
 
 require("express-async-errors");
 require('dotenv').config();
@@ -12,8 +13,8 @@ require("./startup/db")();
 require("./startup/middlewares")(app);
 require("./startup/routers")(app);
 
-const server = app.listen(process.env.PORT, () => {
+const httpServer = app.listen(process.env.PORT, () => {
     debug(`Server running on http://localhost:${process.env.PORT}`);
 });
 
-require("./startup/websockets")(server);
+new SocketServer(httpServer);

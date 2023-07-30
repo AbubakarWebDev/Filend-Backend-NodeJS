@@ -36,9 +36,12 @@ class WebRTCSocket {
 
         this.socketToRoom[this.socket.id] = roomID;
 
-        init 
-            ? this.initiator = this.socket.id 
-            : this.namespace.to(this.initiator).emit("peer_connected", this.socket.id);
+        if (init) {
+            this.initiator = this.socket.id 
+        }
+        else if (this.users[roomID].includes(this.initiator)) {
+            this.namespace.to(this.initiator).emit("peer_connected", this.socket.id);
+        }
     }
 
     onSendingSDPOffer(payload) {

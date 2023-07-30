@@ -1,27 +1,36 @@
+const { Server } = require("socket.io");
 const ChatSocket = require("../sockets/ChatSocket");
 const WebRTCSocket = require("../sockets/WebRTCSocket");
 
-module.exports = function (server) {
-    const io = require("socket.io")(server, {
-        pingTimeout: 60000,
-        cors: {
-            origin: process.env.CORS_ORIGIN.split(',')
-        },
+class SocketServer {
+  constructor(httpServer) {
+    this.io = new Server(httpServer, {
+      pingTimeout: 60000,
+      cors: {
+        origin: process.env.CORS_ORIGIN.split(','),
+      },
     });
 
-    const chatNamespace = io.of("/chat");
-    const webRTCNamespace = io.of("/webRTC");
+    this.chatSocket = new ChatSocket(this.io.of("/chat"));
+    this.webRTCSocket = new WebRTCSocket(this.io.of("/webRTC"));
 
-    const chatSocket = new ChatSocket(chatNamespace);
+    this.setupChatNamespace();
+    this.setupWebRTCNamespace();
+  }
 
-    chatNamespace.on('connection', (socket) => {
-        chatSocket.handleConnection(socket);
+  setupChatNamespace() {
+    const chatNamespace = this.io.of("/chat");
+    chatNamespace.on("connection", (socket) => {
+      this.chatSocket.handleConnection(socket);
     });
+  }
 
-    const webRTCSocket = new WebRTCSocket(webRTCNamespace);
-
-    webRTCNamespace.on('connection', (socket) => {
-        webRTCSocket.handleConnection(socket);
+  setupWebRTCNamespace() {
+    const webRTCNamespace = this.io.of("/webRTC");
+    webRTCNamespace.on("connection", (socket) => {
+      this.webRTCSocket.handleConnection(socket);
     });
+  }
 }
 
+module.exports = SocketServer;

@@ -1,13 +1,26 @@
-const router = require("express").Router();
-
+const express = require("express");
 const AuthController = require("../../controllers/authController");
 
-// Protected Routes
-router.post("/reset-password", AuthController.resetPassword);
-router.post("/forgot-password", AuthController.sendUserPasswordResetEmail);
+class AuthRoutes {
+    constructor() {
+        this.router = express.Router();
+        this.authController = new AuthController();
+        this.initializeRoutes();
+    }
 
-// Public Routes
-router.post("/login", AuthController.loginUser);
-router.post("/register", AuthController.registerUser);
+    initializeRoutes() {
+        // Protected Routes
+        this.router.post("/reset-password", (req, res) => this.authController.resetPassword(req, res));
+        this.router.post("/forgot-password", (req, res) => this.authController.sendUserPasswordResetEmail(req, res));
 
-module.exports = router;
+        // Public Routes
+        this.router.post("/login", (req, res) => this.authController.loginUser(req, res));
+        this.router.post("/register", (req, res) => this.authController.registerUser(req, res));
+    }
+
+    getRouter() {
+        return this.router;
+    }
+}
+
+module.exports = AuthRoutes;

@@ -25,7 +25,7 @@ class AuthController {
    * @returns {void}
    */
 
-  static async loginUser(req, res) {
+  async loginUser(req, res) {
     // Joi Schema for input validation
     const schema = Joi.object({
       email: Joi.string().required().email(),
@@ -66,7 +66,7 @@ class AuthController {
    * @returns {void}
    */
 
-  static async registerUser(req, res, next) {
+  async registerUser(req, res, next) {
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
         cb(null, "public/uploads");
@@ -186,7 +186,7 @@ class AuthController {
    * @returns {void}
    */
 
-  static async sendUserPasswordResetEmail(req, res) {
+  async sendUserPasswordResetEmail(req, res) {
     // Define Joi schema for input validation
     const schema = Joi.object({ email: Joi.string().email().required() });
 
@@ -239,7 +239,7 @@ class AuthController {
    * @returns {void}
    */
 
-  static async resetPassword(req, res) {
+  async resetPassword(req, res) {
     // Define Joi schema for input validation
     const schema = Joi.object({
       id: Joi.string()
