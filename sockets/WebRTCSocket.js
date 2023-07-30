@@ -15,76 +15,91 @@ class WebRTCSocket {
     }
 
     handleConnection(socket) {
-        this.socket = socket;
         console.log(`A user with the id: ${socket.id} is connected - WebRTCSocket`);
 
-        socket.on("join_room", this.onJoinRoom);
+        function socketProvider(eventHandler) {
+            return function(data, ackCallback) {
+                eventHandler(data, ackCallback, socket);
+            }
+        }
 
-        socket.on("sending_sdp_offer", this.onSendingSDPOffer);
+        socket.on("join_room", socketProvider(this.onJoinRoom));
 
-        socket.on("sending_sdp_answer", this.onSendingSDPAnswer);
+        socket.on("sending_sdp_offer", socketProvider(this.onSendingSDPOffer));
 
-        socket.on("sending_file_MetaData", this.onSendingFileMetaData);
+        socket.on("sending_sdp_answer", socketProvider(this.onSendingSDPAnswer));
 
-        socket.on("successfully_store_file_MetaData", this.onSuccessfullyStoreFileMetaData);
+        socket.on("sending_file_MetaData", socketProvider(this.onSendingFileMetaData));
 
-        socket.on('disconnect', this.handleDisconnect);
+        socket.on("successfully_store_file_MetaData", socketProvider(this.onSuccessfullyStoreFileMetaData));
+
+        socket.on('disconnect', socketProvider(this.handleDisconnect));
     }
 
-    onJoinRoom({ roomID, init }) {
-        this.users[roomID] ? this.users[roomID].push(this.socket.id) : this.users[roomID] = [this.socket.id];
+    onJoinRoom({ roomID, init }, ackCallback, socket) {
+        this.users[roomID] ? this.users[roomID].push(socket.id) : this.users[roomID] = [socket.id];
 
-        this.socketToRoom[this.socket.id] = roomID;
+        this.socketToRoom[socket.id] = roomID;
 
         if (init) {
-            this.initiator = this.socket.id 
+            this.initiator = socket.id 
         }
         else if (this.users[roomID].includes(this.initiator)) {
-            this.namespace.to(this.initiator).emit("peer_connected", this.socket.id);
+            this.namespace.to(this.initiator).emit("peer_connected", socket.id);
         }
+
+        ackCallback("ok");
     }
 
-    onSendingSDPOffer(payload) {
+    onSendingSDPOffer(payload, ackCallback, socket) {
         this.namespace.to(payload.userToSignal).emit("receive_sdp_offer", {
             signal: payload.signal,
             callerID: payload.callerID,
         });
+
+        ackCallback("ok");
     }
 
-    onSendingSDPAnswer(payload) {
+    onSendingSDPAnswer(payload, ackCallback, socket) {
         this.namespace.to(payload.userToSignal).emit("receive_sdp_answer", {
             signal: payload.signal,
             callerID: payload.callerID,
         });
+
+        ackCallback("ok");
     }
 
-    onSendingFileMetaData(payload) {
+    onSendingFileMetaData(payload, ackCallback, socket) {
         this.namespace.to(payload.userToSignal).emit("receive_file_MetaData", {
             metaData: payload.metaData,
             callerID: payload.callerID,
         });
+
+        ackCallback("ok");
     }
 
-    onSuccessfullyStoreFileMetaData(payload) {
+    onSuccessfullyStoreFileMetaData(payload, ackCallback, socket) {
         this.namespace.to(payload.userToSignal).emit("peer_successfully_store_file_MetaData", {
             callerID: payload.callerID,
         });
+
+        ackCallback("ok");
     }
 
-    handleDisconnect() {
-        console.log(`A user with the id: ${this.socket.id} is disconnected - WebRTCSocket`);
+    handleDisconnect(data, ackCallback, socket) {
+        console.log(`A user with the id: ${socket.id} is disconnected - WebRTCSocket`);
 
-        const roomID = this.socketToRoom[this.socket.id];
+        const roomID = this.socketToRoom[socket.id];
         const socketsInRoom = this.users[roomID];
 
         if (socketsInRoom) {
-            const updatedSocketsInRoom = socketsInRoom.filter((id) => id !== this.socket.id);
+            const updatedSocketsInRoom = socketsInRoom.filter((id) => id !== socket.id);
 
             this.users[roomID] = updatedSocketsInRoom;
 
-            delete this.socketToRoom[this.socket.id];
+            delete this.socketToRoom[socket.id];
 
-            this.socket.broadcast.emit("user_left", this.socket.id);
+            socket.broadcast.emit("user_left", socket.id);
         }
     }
 }

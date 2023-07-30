@@ -1,6 +1,7 @@
 class ChatSocket {
     constructor(namespace) {
         this.onlineUsers = {};
+        this.socketToUser = {};
         this.namespace = namespace;
 
         this.onTyping = this.onTyping.bind(this);
@@ -15,49 +16,65 @@ class ChatSocket {
     }
 
     handleConnection(socket) {
-        this.socket = socket;
         console.log(`A user with the id: ${socket.id} is connected - ChatSocket`);
 
-        socket.on('setup', this.onChatSetup);
+        function socketProvider(eventHandler) {
+            return function(data, ackCallback) {
+                eventHandler(data, ackCallback, socket);
+            }
+        }
 
-        socket.on('joinChat', this.onJoinChat);
+        socket.on('setup', socketProvider(this.onChatSetup));
 
-        socket.on('joinNewGroupChat', this.onJoinNewGroupChat);
+        socket.on('joinChat', socketProvider(this.onJoinChat));
 
-        socket.on('updateGroupChat', this.onUpdateGroupChat);
+        socket.on('joinNewGroupChat', socketProvider(this.onJoinNewGroupChat));
 
-        socket.on('typing', this.onTyping);
+        socket.on('updateGroupChat', socketProvider(this.onUpdateGroupChat));
 
-        socket.on('typingOff', this.onTypingOff);
+        socket.on('typing', socketProvider(this.onTyping));
 
-        socket.on('sendMessage', this.onSendMessage);
+        socket.on('typingOff', socketProvider(this.onTypingOff));
 
-        socket.on('disconnect', this.handleDisconnect);
+        socket.on('sendMessage', socketProvider(this.onSendMessage));
+
+        socket.on('disconnect', socketProvider(this.handleDisconnect));
     }
 
-    onChatSetup(userId) {
-        this.socket.join(userId);
-
-        this.onlineUsers[userId] = this.socket.id;
-
+    onChatSetup(userId, ack, socket) {
+        socket.join(userId);
+        
+        this.onlineUsers[userId] = socket.id;
+        this.socketToUser[socket.id] = userId;
+        
         this.namespace.emit('onlineUsers', this.onlineUsers);
+
+        console.log("onChatSetup", userId, this.onlineUsers);
+
+        ack("ok");
     }
 
-    onJoinChat(chatId) {
-        this.socket.join(chatId);
+    onJoinChat(chatId, ack, socket) {
+        socket.join(chatId);
+
+        console.log("onJoinChat", chatId, socket.id);
+
+        ack("ok");
     }
 
-    onJoinNewGroupChat({ chat, userId }) {
-        this.socket.join(chat._id);
+    onJoinNewGroupChat({ chat, userId }, ack, socket) {
+        socket.join(chat._id);
 
         [...chat.users, ...chat.groupAdmins].forEach((user) => {
             if (user._id !== userId) {
                 this.namespace.to(user._id).emit('joinGroupChat', chat);
             }
         });
+
+        ack("ok");
     }
 
-    onUpdateGroupChat({ chat, userId, addedUser, removedUser }) {
+    onUpdateGroupChat({ chat, userId, addedUser, removedUser }, ack, socket) {
         [...chat.users, ...chat.groupAdmins].forEach((user) => {
             if (user._id !== userId) {
                 this.namespace.to(user._id).emit('updatedGroupChat', chat);
@@ -71,33 +88,43 @@ class ChatSocket {
         addedUser.forEach((user) => {
             this.namespace.to(user._id).emit('joinGroupChat', chat);
         });
+
+        ack("ok");
     }
 
-    onTyping({ chatId, user }) {
+    onTyping({ chatId, user }, ack, socket) {
         this.namespace.to(chatId).except(user._id).emit('startTyping', { chatId, user });
+        ack("ok");
     }
 
-    onTypingOff({ chatId, user }) {
+    onTypingOff({ chatId, user }, ack, socket) {
         this.namespace.to(chatId).except(user._id).emit('stopTyping', { chatId, user });
+        ack("ok");
     }
 
-    onSendMessage(message) {
+    onSendMessage(message, ack, socket) {
         [...message.chat.users, ...message.chat.groupAdmins].forEach((user) => {
             if (user !== message.sender._id) {
                 this.namespace.to(user).emit('receiveMessage', message);
             }
         });
+
+        ack("ok");
     }
 
-    handleDisconnect() {
-        for (const key in this.onlineUsers) {
-            if (this.onlineUsers[key] === this.socket.id) {
-                console.log(`A user with the id: ${this.socket.id} is disconnected - ChatSocket`);
+    handleDisconnect(data, ack, socket) {
+        console.log(`A user with the id: ${socket.id} is disconnected - ChatSocket`);
 
-                this.socket.leave(key);
-                delete this.onlineUsers[key];
-            }
+        const userId = this.socketToUser[socket.id];
+
+        if (userId) {
+            socket.leave(userId);
+            delete this.onlineUsers[userId];
+            delete this.socketToUser[socket.id];
         }
+        
+        console.log(this.onlineUsers);
+        console.log(this.socketToUser);
 
         this.namespace.emit('onlineUsers', this.onlineUsers);
     }
