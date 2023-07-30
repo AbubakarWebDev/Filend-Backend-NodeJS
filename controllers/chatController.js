@@ -628,7 +628,7 @@ class ChatController {
 
     const updatedChat = await Chat.findByIdAndUpdate(
       value.chatId,
-      { $set: { users: value.users } },
+      { $set: { groupAdmins: value.users } },
       { new: true }
     )
       .populate({
