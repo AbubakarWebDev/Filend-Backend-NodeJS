@@ -20,7 +20,7 @@ class UserController {
    * @returns {void}
    */
 
-  static async checkUserExists(req, res) {
+  async checkUserExists(req, res) {
     // Define Joi schema for params validation
     const schema = Joi.string()
       .label("User ID")
@@ -53,7 +53,7 @@ class UserController {
    * @returns {void}
    */
 
-  static async changePassword(req, res) {
+  async changePassword(req, res) {
     // Define Joi schema for input validation
     const schema = Joi.object({
       currentPassword: Joi.string().min(8).max(1024).required(),
@@ -113,7 +113,7 @@ class UserController {
    * @returns {void}
    */
 
-  static async getLoggedInUser(req, res) {
+  async getLoggedInUser(req, res) {
     return res.status(200).json(success("Success", 200, { user: req.user }));
   }
 
@@ -128,18 +128,18 @@ class UserController {
    * @returns {void}
    */
 
-  static async getAllUsers(req, res) {
+  async getAllUsers(req, res) {
     let filter = req.query.search
       ? {
-        $or: [
-          { username: { $regex: req.query.search, $options: "i" } },
-          { email: { $regex: req.query.search, $options: "i" } },
-        ],
-        _id: { $ne: req.user._id },
-      }
+          $or: [
+            { username: { $regex: req.query.search, $options: "i" } },
+            { email: { $regex: req.query.search, $options: "i" } },
+          ],
+          _id: { $ne: req.user._id },
+        }
       : {
-        _id: { $ne: req.user._id },
-      };
+          _id: { $ne: req.user._id },
+        };
 
     const users = await User.find(filter).select("-password -__v");
 
@@ -157,7 +157,7 @@ class UserController {
    * @returns {void}
    */
 
-  static async updateUserProfile(req, res) {
+  async updateUserProfile(req, res) {
     const schema = Joi.object({
       username: Joi.string().alphanum().min(4).max(25).required(),
       firstName: Joi.string().min(3).required().label("First Name"),
@@ -176,28 +176,29 @@ class UserController {
     let userEmail = await User.findOne({
       $and: [
         {
-          email: { $ne: req.user.email }
+          email: { $ne: req.user.email },
         },
         {
-          email: { $eq: value.email }
+          email: { $eq: value.email },
         },
-      ]
+      ],
     });
-    if (userEmail) throw new AppError("Entered email is already exist on database.", 400);
+    if (userEmail)
+      throw new AppError("Entered email is already exist on database.", 400);
 
     // Check if user exists in database excluding the current username
     let username = await User.findOne({
       $and: [
         {
-          username: { $ne: req.user.username }
+          username: { $ne: req.user.username },
         },
         {
-          username: { $eq: value.username }
+          username: { $eq: value.username },
         },
-      ]
+      ],
     });
-    if (username) throw new AppError("Entered username is already exist on database.", 400);
-
+    if (username)
+      throw new AppError("Entered username is already exist on database.", 400);
 
     // update new user details in database
     const updatedUser = await User.findByIdAndUpdate(
@@ -206,7 +207,7 @@ class UserController {
         username: value.username,
         firstName: value.firstName,
         lastName: value.lastName,
-        email: value.email
+        email: value.email,
       },
       { new: true, select: "-password" }
     );
@@ -214,19 +215,18 @@ class UserController {
     return res.status(200).json(success("Success", 200, { user: updatedUser }));
   }
 
-
   /**
- * @route   PUT /api/v1/users/avatar
- * @desc    Update the user profile data
- * @access  Protected
- *
- * @param   {Object} req - Express request object.
- * @param   {Object} res - Express response object.
- *
- * @returns {void}
- */
+   * @route   PUT /api/v1/users/avatar
+   * @desc    Update the user profile data
+   * @access  Protected
+   *
+   * @param   {Object} req - Express request object.
+   * @param   {Object} res - Express response object.
+   *
+   * @returns {void}
+   */
 
-  static async updateUserAvatar(req, res, next) {
+  async updateUserAvatar(req, res, next) {
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
         cb(null, "public/uploads");
@@ -280,12 +280,10 @@ class UserController {
               `File ${err.field} upload exceeds the maximum file size limit!`,
               400
             );
-          }
-          else {
+          } else {
             throw err;
           }
-        }
-        else if (err instanceof AppError) {
+        } else if (err instanceof AppError) {
           throw err;
         }
 
@@ -302,9 +300,10 @@ class UserController {
           { new: true, select: "-password" }
         );
 
-        return res.status(200).json(success("Success", 200, { user: updatedUser }));
-      }
-      catch (err) {
+        return res
+          .status(200)
+          .json(success("Success", 200, { user: updatedUser }));
+      } catch (err) {
         return next(err);
       }
     });

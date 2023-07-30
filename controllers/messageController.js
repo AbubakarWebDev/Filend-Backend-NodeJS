@@ -18,7 +18,7 @@ class MessageController {
    * @returns {void}
    */
 
-  static async getAllMessages(req, res) {
+  async getAllMessages(req, res) {
     // Joi Schema for input validation
     const schema = Joi.string()
       .label("Chat ID")
@@ -77,7 +77,7 @@ class MessageController {
    * @returns {void}
    */
 
-  static async sendMessage(req, res) {
+  async sendMessage(req, res) {
     // Joi Schema for input validation
     const schema = Joi.object({
       chatId: Joi.string()
@@ -153,7 +153,7 @@ class MessageController {
    * @returns {void}
    */
 
-  static async updateReadBy(req, res) {
+  async updateReadBy(req, res) {
     // Joi Schema for input validation
     const schema = Joi.object({
       messageId: Joi.string()

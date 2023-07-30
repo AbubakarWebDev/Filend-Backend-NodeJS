@@ -1,17 +1,43 @@
-const router = require('express').Router();
-
-const authenticateToken = require('../../middlewares/authenticateToken');
-
+const express = require("express");
 const ChatController = require("../../controllers/chatController");
+const authenticateToken = require("../../middlewares/authenticateToken");
 
-router.get('/', authenticateToken, ChatController.getAllChats);
-router.post('/', authenticateToken, ChatController.getOrCreateChat);
+class ChatsRoutes {
+  constructor() {
+    this.router = express.Router();
+    this.chatController = new ChatController();
+    this.initializeRoutes();
+  }
 
-router.post('/group', authenticateToken, ChatController.createGroupChat);
-router.put('/group/add-member', authenticateToken, ChatController.addtoGroup);
-router.put('/group/rename', authenticateToken, ChatController.renameGroupChat);
-router.put('/group/users', authenticateToken, ChatController.updateGroupUsers);
-router.put('/group/admins', authenticateToken, ChatController.updateAdminUsers);
-router.put('/group/remove-member', authenticateToken, ChatController.removeFromGroup);
+  initializeRoutes() {
+    this.router.get("/", authenticateToken, (req, res) =>
+      this.chatController.getAllChats(req, res)
+    );
+    this.router.post("/", authenticateToken, (req, res) =>
+      this.chatController.getOrCreateChat(req, res)
+    );
+    this.router.post("/group", authenticateToken, (req, res) =>
+      this.chatController.createGroupChat(req, res)
+    );
+    this.router.put("/group/add-member", authenticateToken, (req, res) =>
+      this.chatController.addtoGroup(req, res)
+    );
+    this.router.put("/group/rename", authenticateToken, (req, res) =>
+      this.chatController.renameGroupChat(req, res)
+    );
+    this.router.put("/group/users", authenticateToken, (req, res) =>
+      this.chatController.updateGroupUsers(req, res)
+    );
+    this.router.put("/group/admins", authenticateToken, (req, res) =>
+      this.chatController.updateAdminUsers(req, res)
+    );
+    this.router.put("/group/remove-member", authenticateToken, (req, res) =>
+      this.chatController.removeFromGroup(req, res)
+    );
+  }
+  getRouter() {
+    return this.router;
+  }
+}
 
-module.exports = router;
+module.exports = ChatsRoutes;

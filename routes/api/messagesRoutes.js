@@ -1,11 +1,29 @@
-const router = require("express").Router();
-
+const express = require("express");
 const authenticateToken = require("../../middlewares/authenticateToken");
-
 const MessageController = require("../../controllers/messageController");
 
-router.get("/", authenticateToken, MessageController.getAllMessages);
-router.post("/", authenticateToken, MessageController.sendMessage);
-router.put("/readBy", authenticateToken, MessageController.updateReadBy);
+class MessagesRoutes {
+  constructor() {
+    this.router = express.Router();
+    this.messageController = new MessageController();
+    this.initializeRoutes();
+  }
 
-module.exports = router;
+  initializeRoutes() {
+    this.router.get("/", authenticateToken, (req, res) =>
+      this.messageController.getAllMessages(req, res)
+    );
+    this.router.post("/", authenticateToken, (req, res) =>
+      this.messageController.sendMessage(req, res)
+    );
+    this.router.put("/readBy", authenticateToken, (req, res) =>
+      this.messageController.updateReadBy(req, res)
+    );
+  }
+
+  getRouter() {
+    return this.router;
+  }
+}
+
+module.exports = MessagesRoutes;
