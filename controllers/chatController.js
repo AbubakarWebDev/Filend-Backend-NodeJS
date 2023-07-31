@@ -476,7 +476,7 @@ class ChatController {
         .regex(/^[0-9a-fA-F]{24}$/)
         .rule({ message: "{{#label}} is Invalid!" }),
 
-      userType: Joi.string().valid('groupUser', 'groupAdmin').required()
+      userType: Joi.string().valid('groupUser', 'groupAdmin', 'both').required()
     });
 
     // Validate request body with Joi schema
@@ -498,6 +498,7 @@ class ChatController {
     if (!checkChatId)
       throw new AppError("chatId is not found on database", 404);
 
+    // Check if Admin can only remove the member of the Group
     const isLoggedInUserAdmin = checkChatId.groupAdmins.some(
       (user) => user._id.toString() === req.user._id.toString()
     );
@@ -506,6 +507,7 @@ class ChatController {
       throw new AppError("Admin can only remove the member of the Group!", 400);
     }
 
+    // Check if Sole Admin Unable to leave the group
     if (
       isLoggedInUserAdmin &&
       checkChatId.groupAdmins.length === 1 &&
@@ -517,20 +519,54 @@ class ChatController {
       );
     }
 
+    if (value.userType === "both") {
+      var checkUserExist = {
+        $and: [
+          {
+            users: {
+              $elemMatch: { $eq: value.userId },
+            },
+          },
+          {
+            groupAdmins: {
+              $elemMatch: { $eq: value.userId },
+            }
+          },
+        ],      
+      }
+
+      var pullOperation = {
+        $pull: { 
+          users: value.userId,
+          groupAdmins: value.userId 
+        }
+      }
+    }
+    else {
+      var checkUserExist = {
+        [value.userType === "groupUser" ? "users" : "groupAdmins"]: {
+          $elemMatch: { $eq: value.userId },
+        }
+      }
+
+      var pullOperation = {
+        $pull: { [value.userType === "groupUser" ? "users" : "groupAdmins"]: value.userId }
+      }
+    }
+
     // Check if userId already attached to the chatId
     let checkUserExistOnChat = await Chat.findOne({
       _id: value.chatId,
       isGroupChat: true,
-      [value.userType === "groupUser" ? "users" : "groupAdmins"]: {
-        $elemMatch: { $eq: value.userId },
-      },
+      ...checkUserExist
     });
     if (!checkUserExistOnChat)
       throw new AppError("This User Already Added on this group", 404);
 
+    
     const updatedChat = await Chat.findByIdAndUpdate(
       value.chatId,
-      { $pull: { [value.userType === "groupUser" ? "users" : "groupAdmins"]: value.userId } },
+      pullOperation,
       { new: true }
     )
       .populate({
