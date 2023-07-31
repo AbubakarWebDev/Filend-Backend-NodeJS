@@ -142,7 +142,8 @@ class AuthController {
           } else {
             throw err;
           }
-        } else if (err instanceof AppError) {
+        } 
+        else if (err instanceof AppError) {
           throw err;
         }
 
@@ -169,7 +170,8 @@ class AuthController {
         await user.save();
 
         return res.status(200).json(success("User created successfully", 200));
-      } catch (err) {
+      } 
+      catch (err) {
         return next(err);
       }
     });

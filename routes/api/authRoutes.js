@@ -15,7 +15,7 @@ class AuthRoutes {
 
         // Public Routes
         this.router.post("/login", (req, res) => this.authController.loginUser(req, res));
-        this.router.post("/register", (req, res) => this.authController.registerUser(req, res));
+        this.router.post("/register", (req, res, next) => this.authController.registerUser(req, res, next));
     }
 
     getRouter() {
