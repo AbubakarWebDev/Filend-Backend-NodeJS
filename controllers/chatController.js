@@ -1,5 +1,7 @@
 const Joi = require("joi");
 
+const path = require("path");
+const multer = require("multer");
 const Chat = require("../models/Chat");
 const { User } = require("../models/User");
 
@@ -367,6 +369,134 @@ class ChatController {
   }
 
   /**
+   * @route   PUT /api/v1/chats/group/icon
+   * @desc    Update the Group chat Icon
+   * @access  Protected
+   *
+   * @param   {Object} req - Express request object.
+   * @param   {Object} res - Express response object.
+   *
+   * @returns {void}
+   */
+
+  async updateGroupIcon(req, res, next) {
+    const storage = multer.diskStorage({
+      destination: function (req, file, cb) {
+        cb(null, "public/uploads");
+      },
+
+      filename: function (req, file, cb) {
+        const fileName = file.originalname.split(".")[0];
+        const fileExtension = file.originalname.split(".")[1];
+
+        cb(null, `${fileName}-${Date.now()}.${fileExtension}`);
+      },
+    });
+
+    async function fileFilter(req, file, cb) {
+      const schema = Joi.object({
+        chatId: Joi.string()
+          .label("Chat ID")
+          .required()
+          .regex(/^[0-9a-fA-F]{24}$/)
+          .rule({ message: "{{#label}} is Invalid!" }),
+      });
+
+      // Validate request body with Joi schema
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        return cb(new AppError(error.details[0].message, 422), false);
+      }
+
+      // Check if chat Id already exists in database or not
+      let checkId = await Chat.findOne({ _id: value.chatId, isGroupChat: true });
+      if (!checkId)
+        throw new AppError("ChatId is Not Valid or Not found on database", 404);
+
+      if (!file) {
+        return cb(new AppError("Group Icon is Required!", 400), false);
+      }
+
+      // Check if the file is an image with the allowed extensions
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      const allowedExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp"];
+
+      const isImage = file.mimetype.startsWith("image/");
+      const isAllowedExtension = allowedExtensions.includes(fileExtension);
+
+      if (!isImage || !isAllowedExtension) {
+        return cb(
+          new AppError(
+            "Invalid file type. Only image files (PNG, JPG, JPEG, GIF, and WebP) are allowed.",
+            400
+          ),
+          false
+        );
+      }
+
+      cb(null, true);
+    }
+
+    const limits = {
+      fileSize: 1 * 1000 * 1000, // 1 MB
+      files: 1,
+    };
+
+    const upload = multer({ storage, limits, fileFilter }).single("groupIcon");
+
+    upload(req, res, async (err) => {
+      try {
+        if (err instanceof multer.MulterError) {
+          if (err.code === "LIMIT_FILE_SIZE") {
+            throw new AppError(
+              `File ${err.field} upload exceeds the maximum file size limit!`,
+              400
+            );
+          } else {
+            throw err;
+          }
+        }
+        else if (err instanceof AppError) {
+          throw err;
+        }
+
+        if (!req.file) {
+          throw new AppError("Group Icon Image is Required!", 400);
+        }
+
+        const filePath = req.file.path.replaceAll("\\", "/");
+        const newFilePath = filePath.replace("public/", "");
+
+        const updatedChat = await Chat.findByIdAndUpdate(
+          req.body.chatId,
+          { groupIcon: newFilePath },
+          { new: true }
+        )
+          .populate({
+            path: "users",
+            select: "-password",
+          })
+          .populate({
+            path: "groupAdmins",
+            select: "-password",
+          })
+          .populate({
+            path: "latestMessage",
+            populate: {
+              path: "sender",
+              select: "username firstName lastName avatar",
+            },
+          });
+
+        return res.status(200).json(success("GroupIcon changed Successfully", 200, { chat: updatedChat }));
+      }
+      catch (err) {
+        return next(err);
+      }
+    });
+  }
+
+  /**
    * @route   PUT /api/v1/chats/group/add-member
    * @desc    Add the user to the group
    * @access  Protected
@@ -532,13 +662,13 @@ class ChatController {
               $elemMatch: { $eq: value.userId },
             }
           },
-        ],      
+        ],
       }
 
       var pullOperation = {
-        $pull: { 
+        $pull: {
           users: value.userId,
-          groupAdmins: value.userId 
+          groupAdmins: value.userId
         }
       }
     }
@@ -563,7 +693,7 @@ class ChatController {
     if (!checkUserExistOnChat)
       throw new AppError("This User Already Added on this group", 404);
 
-    
+
     const updatedChat = await Chat.findByIdAndUpdate(
       value.chatId,
       pullOperation,

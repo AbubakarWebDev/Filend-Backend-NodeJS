@@ -21,9 +21,12 @@ class ChatsRoutes {
     );
     this.router.put("/group/add-member", authenticateToken, (req, res) =>
       this.chatController.addtoGroup(req, res)
-    );
+    ); 
     this.router.put("/group/rename", authenticateToken, (req, res) =>
       this.chatController.renameGroupChat(req, res)
+    );
+    this.router.put("/group/icon", authenticateToken, (req, res, next) =>
+      this.chatController.updateGroupIcon(req, res, next)
     );
     this.router.put("/group/users", authenticateToken, (req, res) =>
       this.chatController.updateGroupUsers(req, res)
